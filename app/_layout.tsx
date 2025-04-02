@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import { Stack, useRootNavigationState, router } from 'expo-router';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
