@@ -7,7 +7,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
-        headerShown: true,
+        headerShown: false,
         tabBarStyle: {
           paddingBottom: 5,
           height: 55,
@@ -15,25 +15,14 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="income"
-        options={{
-          title: 'Login',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="login" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="welcome"
         options={{
-          title: '💰 Billetera',
-          tabBarLabel: 'Billetera',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="account-balance-wallet" size={size} color={color} />
           ),
         }}
       />
-      
     </Tabs>
   );
 }

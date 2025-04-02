@@ -11,6 +11,7 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
+  Pressable
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -132,6 +133,8 @@ export default function WelcomeScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
+  const slideAnimation = React.useRef(new Animated.Value(0)).current;
+  const menuAnimation = React.useRef(new Animated.Value(0)).current;
   const [menuVisible, setMenuVisible] = useState(false);
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -142,8 +145,6 @@ export default function WelcomeScreen() {
   const [saldo, setSaldo] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [loadingDatos, setLoadingDatos] = useState(true);
-  const [animation] = useState(new Animated.Value(0));
-  const [menuAnimation] = useState(new Animated.Value(0));
   const [datosIngresos, setDatosIngresos] = useState<{ categoria: string; monto: number; color: string }[]>([]);
   const [datosEgresos, setDatosEgresos] = useState<{ categoria: string; monto: number; color: string }[]>([]);
 
@@ -324,91 +325,65 @@ export default function WelcomeScreen() {
   }, [transacciones]);
 
   const renderGraficoExponencial = (datos: { categoria: string; monto: number; color: string }[], total: number) => {
-    const alturaGrafico = 180;
-    const anchoGrafico = Dimensions.get('window').width - 32; // Ancho de pantalla menos padding
-    const padding = 5;
-    const alturaUtil = alturaGrafico - (2 * padding);
-    const anchoUtil = anchoGrafico - (2 * padding);
-
-    // Ordenar datos de menor a mayor para efecto exponencial
-    const datosOrdenados = [...datos].sort((a, b) => a.monto - b.monto);
+    const datosOrdenados = [...datos].sort((a, b) => b.monto - a.monto);
     const maxMonto = Math.max(...datosOrdenados.map(d => d.monto));
-
-    // Función para calcular la posición Y exponencial
-    const calcularPosicionY = (monto: number) => {
-      const factor = Math.log(monto + 1) / Math.log(maxMonto + 1); // +1 para evitar log(0)
-      return alturaGrafico - (factor * alturaUtil) - padding;
-    };
+    const windowWidth = Dimensions.get('window').width;
+    const maxBars = Math.min(6, datosOrdenados.length); // Aumentamos a 6 barras máximo ya que serán más delgadas
+    const alturaMaxima = 150; // Altura máxima de las barras
+    
+    let datosAgrupados = datosOrdenados;
+    if (datosOrdenados.length > maxBars) {
+      const principales = datosOrdenados.slice(0, maxBars - 1);
+      const otros = datosOrdenados.slice(maxBars - 1);
+      const montoOtros = otros.reduce((acc, curr) => acc + curr.monto, 0);
+      
+      datosAgrupados = [
+        ...principales,
+        {
+          categoria: 'Otros',
+          monto: montoOtros,
+          color: '#9E9E9E'
+        }
+      ];
+    }
 
     return (
-      <View style={styles.graficoWrapper}>
-        <View style={[styles.graficoExponencial, { width: anchoGrafico, height: alturaGrafico }]}>
-          {/* Eje Y */}
-          <View style={[styles.ejeY, { height: alturaGrafico }]} />
-          
-          {/* Eje X */}
-          <View style={[styles.ejeX, { width: anchoGrafico, bottom: padding }]} />
-
-          {/* Líneas de datos */}
-          {datosOrdenados.map((item, index) => {
-            const x = (index + 1) * (anchoUtil / (datosOrdenados.length + 1)) + padding;
-            const y = calcularPosicionY(item.monto);
-
+      <View>
+        <View style={styles.barraContainer}>
+          {datosAgrupados.map((item, index) => {
+            const porcentaje = (item.monto / total) * 100;
+            const altura = Math.max(30, (porcentaje * alturaMaxima) / 100);
+            
             return (
-              <React.Fragment key={index}>
-                {/* Línea vertical desde eje X hasta el punto */}
+              <View key={index} style={styles.barraWrapper}>
+                <Text style={styles.barraPorcentaje}>{porcentaje.toFixed(1)}%</Text>
                 <View
                   style={[
-                    styles.lineaVertical,
+                    styles.barra,
                     {
-                      height: alturaGrafico - y - padding,
-                      left: x,
-                      bottom: padding,
+                      height: altura,
                       backgroundColor: item.color,
-                    },
+                      width: 28 // Ancho fijo más delgado
+                    }
                   ]}
                 />
-                
-                {/* Punto de datos */}
-                <View
-                  style={[
-                    styles.puntoDatos,
-                    {
-                      left: x - 4,
-                      top: y - 4,
-                      backgroundColor: item.color,
-                    },
-                  ]}
-                />
-
-                {/* Etiqueta de categoría */}
-                <Text
-                  style={[
-                    styles.etiquetaCategoria,
-                    {
-                      left: x - 20,
-                      bottom: 0,
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
+                <Text style={styles.barraLabel} numberOfLines={1}>
                   {item.categoria}
                 </Text>
-              </React.Fragment>
+              </View>
             );
           })}
         </View>
 
-        {/* Leyenda */}
         <View style={styles.leyendaGrafico}>
-          {datosOrdenados.map((item, index) => (
+          {datosAgrupados.map((item, index) => (
             <View key={index} style={styles.itemLeyenda}>
               <View style={[styles.colorLeyenda, { backgroundColor: item.color }]} />
-              <Text style={styles.textoLeyenda}>
-                {item.categoria}: ${item.monto.toFixed(2)}
+              <Text style={styles.textoLeyenda} numberOfLines={1}>
+                {item.categoria}
               </Text>
               <Text style={styles.porcentajeLeyenda}>
-                ({((item.monto / total) * 100).toFixed(1)}%)
+                ${item.monto.toFixed(0)}
               </Text>
             </View>
           ))}
@@ -419,21 +394,16 @@ export default function WelcomeScreen() {
 
   const handleOpenModal = () => {
     setModalVisible(true);
-    Animated.spring(animation, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 50,
-      friction: 7
-    }).start();
   };
 
   const handleCloseModal = () => {
-    Animated.timing(animation, {
-      toValue: 0,
+    Animated.timing(slideAnimation, {
+      toValue: 1.1,
       duration: 200,
       useNativeDriver: true
     }).start(() => {
       setModalVisible(false);
+      slideAnimation.setValue(0);
       setTipoSeleccionado('ingreso');
       setCategoriaSeleccionada(null);
       setMonto('');
@@ -701,9 +671,9 @@ export default function WelcomeScreen() {
   const renderModalContent = () => {
     return (
       <ScrollView 
-        style={styles.modalContent}
-        showsVerticalScrollIndicator={true}
-        bounces={false}
+        style={styles.modalScroll}
+        contentContainerStyle={styles.modalScrollContent}
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.modalInnerContent}>
           <View style={styles.tipoTransaccionContainer}>
@@ -818,23 +788,36 @@ export default function WelcomeScreen() {
     );
   };
 
+  useEffect(() => {
+    if (modalVisible) {
+      Animated.spring(slideAnimation, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50,    // Reducimos la tensión para una entrada más suave
+        friction: 10,   // Aumentamos la fricción para evitar el rebote
+        velocity: 3     // Velocidad inicial controlada
+      }).start();
+    }
+  }, [modalVisible]);
+
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.userButton}
-          onPress={toggleMenu}
-        >
-          <MaterialIcons name="person" size={24} color="#4CAF50" />
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.welcomeContainer}>
-        <Text style={styles.welcomeEmoji}>👋</Text>
-        <Text style={styles.welcomeText}>
-          ¡Bienvenido, <Text style={styles.userName}>{user?.usuario}</Text>!
-        </Text>
-        <Text style={styles.welcomeSubtext}>Tu asistente financiero personal</Text>
+        <View style={styles.welcomeHeader}>
+          <View style={styles.welcomeTextContainer}>
+            <Text style={styles.welcomeEmoji}>✨</Text>
+            <Text style={styles.welcomeText}>
+              ¡Bienvenido, <Text style={styles.userName}>{user?.usuario}</Text>!
+            </Text>
+            <Text style={styles.welcomeSubtext}>Tu asistente financiero personal</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.userButton}
+            onPress={toggleMenu}
+          >
+            <MaterialIcons name="person" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -955,7 +938,7 @@ export default function WelcomeScreen() {
       <Modal
         visible={modalVisible}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={handleCloseModal}
       >
         <View style={styles.modalOverlay}>
@@ -963,15 +946,13 @@ export default function WelcomeScreen() {
             style={[
               styles.modalContainer,
               {
-                transform: [
-                  { scale: animation },
-                  { translateY: animation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
-                  },
-                ],
-              },
+                transform: [{
+                  translateY: slideAnimation.interpolate({
+                    inputRange: [0, 1, 1.1],
+                    outputRange: [600, 0, 800]
+                  })
+                }]
+              }
             ]}
           >
             <View style={styles.modalHeader}>
@@ -979,8 +960,9 @@ export default function WelcomeScreen() {
               <TouchableOpacity 
                 onPress={handleCloseModal}
                 style={styles.closeButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <MaterialIcons name="close" size={24} color="#666" />
+                <MaterialIcons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
 
@@ -995,97 +977,157 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  userButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    alignSelf: 'flex-end',
+    backgroundColor: '#F5F6F8',
   },
   welcomeContainer: {
-    backgroundColor: '#B39DDB', // Soft pastel purple
-    padding: 20,
-    borderRadius: 15,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 20,
+    backgroundColor: '#6B52AE',
+    padding: 24,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    marginBottom: 24,
+  },
+  welcomeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  welcomeTextContainer: {
+    flex: 1,
   },
   welcomeEmoji: {
-    fontSize: 40,
-    marginBottom: 10,
-    textAlign: 'center',
+    fontSize: 36,
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   welcomeText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#4A148C', // Darker purple for better contrast
-    textAlign: 'center',
-    marginBottom: 5,
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  welcomeSubtext: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    letterSpacing: 0.25,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   userName: {
     fontWeight: '800',
-    color: '#4A148C', // Matching dark purple
+    color: '#FFD700',
   },
-  welcomeSubtext: {
-    fontSize: 16,
-    color: '#5E35B1', // Medium purple for subtitle
-    textAlign: 'center',
-    fontStyle: 'italic',
+  userButton: {
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginLeft: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  header: {
-    padding: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
+  saldoContainer: {
+    marginTop: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  headerLeft: {
+  saldoLabel: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#424242',
+    marginRight: 12,
+  },
+  saldoMonto: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  content: {
     flex: 1,
+    padding: 16,
+  },
+  graficosContainer: {
+    padding: 16,
+    marginBottom: 16,
+  },
+  graficoSeccion: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    elevation: 2,
+  },
+  tituloGrafico: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  graficoContent: {
+    minHeight: 150,
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    backgroundColor: '#6B52AE',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   menuOverlay: {
     position: 'absolute',
-    top: 60, 
-    right: 16,
-    left: 16,
+    top: 0,
+    left: 0,
+    right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 1000,
   },
   menuContainer: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#FFF',
+    top: 60,
+    right: 16,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 24,
     width: 280,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   menuHeader: {
-    marginBottom: 24,
+    padding: 20,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
@@ -1094,86 +1136,55 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   menuName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    marginTop: 8,
+    color: '#212121',
+    marginBottom: 4,
   },
   menuEmail: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#757575',
   },
   signOutButton: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#FF6B6B',
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FF5252',
+    margin: 16,
+    padding: 12,
+    borderRadius: 12,
     justifyContent: 'center',
   },
   signOutText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
     marginLeft: 8,
-  },
-  saldoContainer: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  saldoLabel: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#333',
-    marginRight: 12,
-    letterSpacing: 0.5,
-  },
-  saldoMonto: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   lista: {
     flex: 1,
+    marginTop: 24,
   },
   listaContent: {
-    padding: 16,
+    paddingBottom: 80,
   },
   transaccionItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 12,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   transaccionIcono: {
     width: 48,
@@ -1181,7 +1192,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   transaccionInfo: {
     flex: 1,
@@ -1189,151 +1200,95 @@ const styles = StyleSheet.create({
   transaccionCategoria: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  transaccionDescripcion: {
-    fontSize: 14,
-    color: '#666',
+    color: '#212121',
     marginBottom: 4,
   },
   transaccionFecha: {
-    fontSize: 12,
-    color: '#999',
-  },
-  transaccionAcciones: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    fontSize: 14,
+    color: '#757575',
   },
   transaccionMonto: {
     fontSize: 18,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    padding: 8,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    fontWeight: '700',
+    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    padding: 16,
+    justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
     width: '100%',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  modalScroll: {
+    maxHeight: '100%',
+  },
+  modalScrollContent: {
+    padding: 24,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginBottom: 16,
+    paddingTop: 20,
+    paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#dee2e6',
+    borderBottomColor: '#f0f0f0',
+    paddingBottom: 16,
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#212121',
+    flex: 1,
   },
   closeButton: {
-    padding: 8,
-    marginRight: -8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
+    marginLeft: 12,
   },
-  tipoTransaccionContainer: {
+  input: {
+    backgroundColor: '#F5F6F8',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  tipoContainer: {
     flexDirection: 'row',
     marginBottom: 16,
-    paddingHorizontal: 8,
+    gap: 12,
   },
-  tipoTransaccionButton: {
+  tipoButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
-    flex: 1,
-    marginHorizontal: 4,
-    borderWidth: 1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
   },
-  tipoTransaccionButtonIngreso: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  tipoTransaccionButtonEgreso: {
-    backgroundColor: '#FF4444',
-    borderColor: '#FF4444',
-  },
-  tipoTransaccionButtonUnselected: {
-    backgroundColor: '#fff',
-    borderColor: '#dee2e6',
-  },
-  tipoTransaccionText: {
+  tipoButtonText: {
     fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
   },
-  tipoTransaccionTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  tipoTransaccionTextUnselected: {
-    color: '#495057',
-  },
-  modalContent: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  modalInnerContent: {
-    paddingTop: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
   categoriasContainer: {
-    marginTop: 16,
+    marginBottom: 24,
   },
-  categoriasTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 12,
-  },
-  categoriaItem: {
+  categoriaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
@@ -1343,7 +1298,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#dee2e6',
   },
-  categoriaItemSelected: {
+  categoriaSeleccionada: {
     backgroundColor: '#e8f5e9',
     borderColor: '#4CAF50',
   },
@@ -1357,42 +1312,28 @@ const styles = StyleSheet.create({
   },
   categoriaNombre: {
     fontSize: 16,
-    color: '#495057',
-    flex: 1,
-  },
-  categoriaNombreSelected: {
-    color: '#2e7d32',
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    fontSize: 16,
-    color: '#333',
-  },
-  inputDescripcion: {
-    height: 100,
-    textAlignVertical: 'top',
+    fontWeight: '500',
+    color: '#212121',
   },
   addButton: {
-    borderRadius: 12,
+    backgroundColor: '#6B52AE',
     padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   addButtonDisabled: {
-    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
   addButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-  graficosContainer: {
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    marginBottom: 16,
   },
   graficoSeccion: {
     marginBottom: 24,
@@ -1474,25 +1415,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
   },
   colorLeyenda: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     marginRight: 8,
   },
   textoLeyenda: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
     color: '#333',
+    flex: 1,
+    marginRight: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.05)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
   porcentajeLeyenda: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1A237E',
     marginLeft: 8,
@@ -1506,11 +1447,165 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   noDataText: {
+    marginTop: 8,
+    color: '#666',
+    textAlign: 'center',
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#FFF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
     fontSize: 16,
     color: '#666',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
     marginTop: 8,
   },
-  content: {
+  transaccionDescripcion: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  transaccionAcciones: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  categoriaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  categoriaItemSelected: {
+    backgroundColor: '#e8f5e9',
+    borderColor: '#4CAF50',
+  },
+  categoriaNombreSelected: {
+    color: '#2e7d32',
+    fontWeight: '600',
+  },
+  modalContent: {
     flex: 1,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalInnerContent: {
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  tipoTransaccionContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  tipoTransaccionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    borderWidth: 1,
+  },
+  tipoTransaccionButtonIngreso: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  tipoTransaccionButtonEgreso: {
+    backgroundColor: '#FF4444',
+    borderColor: '#FF4444',
+  },
+  tipoTransaccionButtonUnselected: {
+    backgroundColor: '#fff',
+    borderColor: '#dee2e6',
+  },
+  tipoTransaccionText: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  tipoTransaccionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  tipoTransaccionTextUnselected: {
+    color: '#495057',
+  },
+  categoriasTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 12,
+  },
+  inputDescripcion: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  barraContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center', // Centrar las barras
+    alignItems: 'flex-end',
+    minHeight: 200,
+    paddingHorizontal: 16,
+    paddingTop: 40,
+    paddingBottom: 24,
+    gap: 24, // Espacio fijo entre barras
+  },
+  barraWrapper: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: 150,
+  },
+  barra: {
+    borderRadius: 20, // Bordes más redondeados
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  barraPorcentaje: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  barraLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: 60,
   },
 });
