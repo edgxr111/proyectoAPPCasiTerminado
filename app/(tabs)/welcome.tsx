@@ -324,9 +324,9 @@ export default function WelcomeScreen() {
   }, [transacciones]);
 
   const renderGraficoExponencial = (datos: { categoria: string; monto: number; color: string }[], total: number) => {
-    const alturaGrafico = 200;
-    const anchoGrafico = Dimensions.get('window').width - 64; // Ancho de pantalla menos padding
-    const padding = 20;
+    const alturaGrafico = 180;
+    const anchoGrafico = Dimensions.get('window').width - 32; // Ancho de pantalla menos padding
+    const padding = 5;
     const alturaUtil = alturaGrafico - (2 * padding);
     const anchoUtil = anchoGrafico - (2 * padding);
 
@@ -374,8 +374,8 @@ export default function WelcomeScreen() {
                   style={[
                     styles.puntoDatos,
                     {
-                      left: x - 6,
-                      top: y - 6,
+                      left: x - 4,
+                      top: y - 4,
                       backgroundColor: item.color,
                     },
                   ]}
@@ -386,7 +386,7 @@ export default function WelcomeScreen() {
                   style={[
                     styles.etiquetaCategoria,
                     {
-                      left: x - 40,
+                      left: x - 20,
                       bottom: 0,
                     },
                   ]}
@@ -820,6 +820,15 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.userButton}
+          onPress={toggleMenu}
+        >
+          <MaterialIcons name="person" size={24} color="#4CAF50" />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.welcomeContainer}>
         <Text style={styles.welcomeEmoji}>👋</Text>
         <Text style={styles.welcomeText}>
@@ -831,17 +840,11 @@ export default function WelcomeScreen() {
         <View style={styles.headerLeft}>
         </View>
         <View style={styles.saldoContainer}>
-          <Text style={styles.saldoLabel}>Saldo actual:</Text>
+          <Text style={styles.saldoLabel}>Saldo actual</Text>
           <Text style={[styles.saldoMonto, { color: saldo >= 0 ? '#4CAF50' : '#FF6B6B' }]}>
             ${saldo.toFixed(2)}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.userButton}
-          onPress={toggleMenu}
-        >
-          <MaterialIcons name="person" size={24} color="#4CAF50" />
-        </TouchableOpacity>
       </View>
 
       {menuVisible && (
@@ -891,12 +894,14 @@ export default function WelcomeScreen() {
         ) : (
           <View style={styles.graficosContainer}>
             <View style={styles.graficoSeccion}>
-              <Text style={styles.tituloGrafico}>Ingresos</Text>
+              <Text style={[styles.tituloGrafico, { color: '#2E7D32' }]}>Ingresos</Text>
               {datosIngresos.length > 0 ? (
-                renderGraficoExponencial(
-                  datosIngresos,
-                  datosIngresos.reduce((acc, curr) => acc + curr.monto, 0)
-                )
+                <View style={styles.graficoContent}>
+                  {renderGraficoExponencial(
+                    datosIngresos,
+                    datosIngresos.reduce((acc, curr) => acc + curr.monto, 0)
+                  )}
+                </View>
               ) : (
                 <View style={styles.noDataContainer}>
                   <MaterialIcons name="show-chart" size={48} color="#CCC" />
@@ -906,12 +911,14 @@ export default function WelcomeScreen() {
             </View>
 
             <View style={styles.graficoSeccion}>
-              <Text style={styles.tituloGrafico}>Egresos</Text>
+              <Text style={[styles.tituloGrafico, { color: '#C62828' }]}>Egresos</Text>
               {datosEgresos.length > 0 ? (
-                renderGraficoExponencial(
-                  datosEgresos,
-                  datosEgresos.reduce((acc, curr) => acc + curr.monto, 0)
-                )
+                <View style={styles.graficoContent}>
+                  {renderGraficoExponencial(
+                    datosEgresos,
+                    datosEgresos.reduce((acc, curr) => acc + curr.monto, 0)
+                  )}
+                </View>
               ) : (
                 <View style={styles.noDataContainer}>
                   <MaterialIcons name="show-chart" size={48} color="#CCC" />
@@ -990,6 +997,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  userButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    alignSelf: 'flex-end',
+  },
   welcomeContainer: {
     backgroundColor: '#B39DDB', // Soft pastel purple
     padding: 20,
@@ -1041,15 +1061,6 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
-  userButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
   menuOverlay: {
     position: 'absolute',
     top: 60, 
@@ -1068,10 +1079,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: 280,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -1079,6 +1087,8 @@ const styles = StyleSheet.create({
   menuHeader: {
     marginBottom: 24,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   avatarContainer: {
     width: 64,
@@ -1117,11 +1127,25 @@ const styles = StyleSheet.create({
     marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   saldoLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginRight: 8,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
+    marginRight: 12,
+    letterSpacing: 0.5,
   },
   saldoMonto: {
     fontSize: 24,
@@ -1374,11 +1398,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   tituloGrafico: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 24,
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   graficoWrapper: {
     alignItems: 'center',
@@ -1388,43 +1414,58 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 24,
     backgroundColor: '#fff',
+    height: 180,
+    width: '100%',
+    paddingHorizontal: 5,
+  },
+  graficoContent: {
+    width: '100%',
   },
   ejeX: {
     position: 'absolute',
-    height: 1,
-    backgroundColor: '#e0e0e0',
+    height: 2, // Haciendo el eje más grueso
+    backgroundColor: '#9E9E9E', // Color más oscuro para mejor visibilidad
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   ejeY: {
     position: 'absolute',
-    width: 1,
-    backgroundColor: '#e0e0e0',
+    width: 2, // Haciendo el eje más grueso
+    backgroundColor: '#9E9E9E', // Color más oscuro para mejor visibilidad
     left: 20,
+    top: 0,
+    bottom: 0,
   },
   lineaVertical: {
     position: 'absolute',
-    width: 2,
-    opacity: 0.7,
+    width: 12, // Barras más delgadas
+    opacity: 0.85,
   },
   puntoDatos: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
     borderColor: '#fff',
-    elevation: 3,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   etiquetaCategoria: {
     position: 'absolute',
-    width: 80,
+    width: 40, // Etiquetas más compactas
     textAlign: 'center',
-    fontSize: 12,
-    color: '#666',
+    fontSize: 10, // Texto más pequeño
+    fontWeight: '600',
+    color: '#424242',
     transform: [{ rotate: '-45deg' }],
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   leyendaGrafico: {
     width: '100%',
@@ -1443,13 +1484,21 @@ const styles = StyleSheet.create({
   },
   textoLeyenda: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#333',
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   porcentajeLeyenda: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A237E',
     marginLeft: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.05)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   noDataContainer: {
     alignItems: 'center',
