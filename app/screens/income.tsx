@@ -125,16 +125,16 @@ export default function IncomeScreen() {
     }
   };
 
-  // Filtrar ingresos del mes actual
+  // Filtrar ingresos del mes actual (para la vista de transacciones)
   const currentMonthIncomes = transactions.filter(t => 
     t.type === 'income' && 
     new Date(t.date).getMonth() === new Date().getMonth()
   );
 
-  // Calcular total de ingresos
-  const totalIncome = currentMonthIncomes.reduce((sum, t) => sum + t.amount, 0);
+  // Calcular total de ingresos (usando todas las transacciones, no solo las del mes actual)
+  const totalIncome = transactions.reduce((sum, t) => sum + t.amount, 0);
 
-  // Calcular ingresos por categoría
+  // Calcular ingresos por categoría (mantenemos solo las del mes actual para el desglose)
   const incomesByCategory = useMemo(() => {
     const categories: { [key: string]: number } = {};
     currentMonthIncomes.forEach(income => {

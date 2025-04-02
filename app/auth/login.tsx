@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  ImageBackground,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [gmail, setGmail] = useState('');
@@ -41,46 +43,73 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Iniciar Sesión</Text>
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          <MaterialIcons name="account-balance-wallet" size={50} color="#FFD700" />
+          <View style={styles.titleContainer}>
+            <Text style={styles.titleMoney}>Money</Text>
+            <Text style={styles.titleFlow}>Flow</Text>
+          </View>
+          <Text style={styles.subtitle}>Tu asistente financiero personal</Text>
+        </View>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Correo electrónico"
-        value={gmail}
-        onChangeText={setGmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        editable={!loading}
-      />
+      <View style={styles.formContainer}>
+        <View style={styles.formContent}>
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="email" size={24} color="#6B52AE" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Correo electrónico"
+              placeholderTextColor="#999"
+              value={gmail}
+              onChangeText={setGmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!loading}
+            />
+          </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        value={contrasena}
-        onChangeText={setContrasena}
-        secureTextEntry
-        editable={!loading}
-      />
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="lock" size={24} color="#6B52AE" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Contraseña"
+              placeholderTextColor="#999"
+              value={contrasena}
+              onChangeText={setContrasena}
+              secureTextEntry
+              editable={!loading}
+            />
+          </View>
 
-      <TouchableOpacity 
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text style={styles.buttonText}>Iniciar Sesión</Text>
-        )}
-      </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Iniciar Sesión</Text>
+                <MaterialIcons name="arrow-forward" size={24} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity 
-        style={styles.registerButton}
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        <Text style={styles.registerText}>¿No tienes cuenta? Regístrate</Text>
-      </TouchableOpacity>
+        <View style={styles.registerContainer}>
+          <TouchableOpacity 
+            style={styles.registerButton}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <Text style={styles.registerText}>¿No tienes cuenta?</Text>
+            <Text style={styles.registerTextBold}>Regístrate</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -88,44 +117,121 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#6B52AE',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#333',
-  },
-  input: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 15,
+  header: {
     alignItems: 'center',
+    paddingVertical: 40,
+  },
+  logoContainer: {
+    alignItems: 'center',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  titleMoney: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  titleFlow: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#E6E0FF',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 10,
   },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    flex: 1,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    justifyContent: 'space-between',
+  },
+  formContent: {
+    padding: 30,
+    paddingTop: 40,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: '#424242',
+  },
+  button: {
+    backgroundColor: '#6B52AE',
+    borderRadius: 12,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    elevation: 4,
+    shadowColor: '#6B52AE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
   buttonDisabled: {
-    opacity: 0.7,
+    backgroundColor: '#A497C6',
   },
   buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  registerContainer: {
+    backgroundColor: '#6B52AE',
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    marginTop: 'auto',
   },
   registerButton: {
-    marginTop: 15,
-    padding: 10,
+    alignItems: 'center',
   },
   registerText: {
-    color: '#007AFF',
-    textAlign: 'center',
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  registerTextBold: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 18,
+    textDecorationLine: 'underline',
   },
 });

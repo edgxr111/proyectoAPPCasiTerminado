@@ -18,6 +18,8 @@ export default function TabLayout() {
         name="welcome"
         options={{
           headerShown: false,
+          title: 'Billetera',
+          tabBarLabel: 'Billetera',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="account-balance-wallet" size={size} color={color} />
           ),

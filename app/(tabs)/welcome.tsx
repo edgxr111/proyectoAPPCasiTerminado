@@ -21,7 +21,7 @@ import { useRouter } from 'expo-router';
 import Swal from 'sweetalert2';
 import '../styles/swal.css';
 
-type MaterialIconName = 'attach-money' | 'work' | 'business' | 'card-giftcard' | 'account-balance' | 'savings' | 'more-horiz' | 'add' | 'restaurant' | 'directions-car' | 'movie' | 'build' | 'shopping-cart' | 'person' | 'logout' | 'arrow-upward' | 'arrow-downward' | 'delete';
+type MaterialIconName = 'attach-money' | 'work' | 'business' | 'card-giftcard' | 'account-balance' | 'savings' | 'more-horiz' | 'add' | 'restaurant' | 'directions-car' | 'movie' | 'build' | 'shopping-cart' | 'person' | 'logout' | 'arrow-upward' | 'arrow-downward' | 'delete' | 'trending-down' | 'compare-arrows';
 
 interface Categoria {
   id: number;
@@ -136,6 +136,8 @@ export default function WelcomeScreen() {
   const slideAnimation = React.useRef(new Animated.Value(0)).current;
   const menuAnimation = React.useRef(new Animated.Value(0)).current;
   const [menuVisible, setMenuVisible] = useState(false);
+  const [insightsVisible, setInsightsVisible] = useState(false);
+  const insightsAnimation = React.useRef(new Animated.Value(0)).current;
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoTransaccion>('ingreso');
@@ -328,8 +330,8 @@ export default function WelcomeScreen() {
     const datosOrdenados = [...datos].sort((a, b) => b.monto - a.monto);
     const maxMonto = Math.max(...datosOrdenados.map(d => d.monto));
     const windowWidth = Dimensions.get('window').width;
-    const maxBars = Math.min(6, datosOrdenados.length); // Aumentamos a 6 barras máximo ya que serán más delgadas
-    const alturaMaxima = 150; // Altura máxima de las barras
+    const maxBars = Math.min(6, datosOrdenados.length);
+    const alturaMaxima = 150;
     
     let datosAgrupados = datosOrdenados;
     if (datosOrdenados.length > maxBars) {
@@ -357,36 +359,24 @@ export default function WelcomeScreen() {
             return (
               <View key={index} style={styles.barraWrapper}>
                 <Text style={styles.barraPorcentaje}>{porcentaje.toFixed(1)}%</Text>
-                <View
-                  style={[
-                    styles.barra,
-                    {
-                      height: altura,
-                      backgroundColor: item.color,
-                      width: 28 // Ancho fijo más delgado
-                    }
-                  ]}
-                />
-                <Text style={styles.barraLabel} numberOfLines={1}>
+                <View style={styles.barraContent}>
+                  <View
+                    style={[
+                      styles.barra,
+                      {
+                        height: altura,
+                        backgroundColor: item.color,
+                        width: 28
+                      }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.barraLabel}>
                   {item.categoria}
                 </Text>
               </View>
             );
           })}
-        </View>
-
-        <View style={styles.leyendaGrafico}>
-          {datosAgrupados.map((item, index) => (
-            <View key={index} style={styles.itemLeyenda}>
-              <View style={[styles.colorLeyenda, { backgroundColor: item.color }]} />
-              <Text style={styles.textoLeyenda} numberOfLines={1}>
-                {item.categoria}
-              </Text>
-              <Text style={styles.porcentajeLeyenda}>
-                ${item.monto.toFixed(0)}
-              </Text>
-            </View>
-          ))}
         </View>
       </View>
     );
@@ -612,6 +602,23 @@ export default function WelcomeScreen() {
     }
   };
 
+  const toggleInsights = () => {
+    if (insightsVisible) {
+      Animated.timing(insightsAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true
+      }).start(() => setInsightsVisible(false));
+    } else {
+      setInsightsVisible(true);
+      Animated.timing(insightsAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true
+      }).start();
+    }
+  };
+
   const cargarCategorias = async () => {
     try {
       const { data, error } = await supabase
@@ -800,6 +807,37 @@ export default function WelcomeScreen() {
     }
   }, [modalVisible]);
 
+  const getSpendingInsights = () => {
+    if (!datosEgresos.length) return [];
+
+    const insights = [];
+    const datosOrdenados = [...datosEgresos].sort((a, b) => b.monto - a.monto);
+    const mayorGasto = datosOrdenados[0];
+    const totalGastos = datosOrdenados.reduce((acc, curr) => acc + curr.monto, 0);
+    const porcentaje = ((mayorGasto.monto / totalGastos) * 100).toFixed(1);
+
+    insights.push({
+      titulo: 'Mayor gasto',
+      mensaje: `Tu categoría de mayor gasto es ${mayorGasto.categoria} (${porcentaje}% del total)`,
+      icon: (iconosPorTipo.egreso[mayorGasto.categoria] || 'trending-down') as MaterialIconName,
+      color: coloresPorTipo.egreso[mayorGasto.categoria] || '#FF6B6B'
+    });
+
+    if (datosOrdenados.length >= 2) {
+      const segundoMayor = datosOrdenados[1];
+      const diferencia = ((mayorGasto.monto - segundoMayor.monto) / mayorGasto.monto * 100).toFixed(1);
+      
+      insights.push({
+        titulo: 'Comparación',
+        mensaje: `Gastas ${diferencia}% más en ${mayorGasto.categoria} que en ${segundoMayor.categoria}`,
+        icon: 'compare-arrows' as MaterialIconName,
+        color: '#FFA726'
+      });
+    }
+
+    return insights;
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.welcomeContainer}>
@@ -820,13 +858,22 @@ export default function WelcomeScreen() {
         </View>
       </View>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-        </View>
-        <View style={styles.saldoContainer}>
-          <Text style={styles.saldoLabel}>Saldo actual</Text>
-          <Text style={[styles.saldoMonto, { color: saldo >= 0 ? '#4CAF50' : '#FF6B6B' }]}>
-            ${saldo.toFixed(2)}
-          </Text>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.insightsButton}
+            onPress={toggleInsights}
+          >
+            <MaterialIcons name="insights" size={24} color="#6B52AE" />
+          </TouchableOpacity>
+          <View style={styles.saldoContainer}>
+            <View style={styles.saldoLabelContainer}>
+              <MaterialIcons name="account-balance-wallet" size={14} color="#6B52AE" style={styles.saldoIcon} />
+              <Text style={styles.saldoLabel}>Saldo actual</Text>
+            </View>
+            <Text style={[styles.saldoMonto, { color: saldo >= 0 ? '#4CAF50' : '#FF6B6B' }]}>
+              ${saldo.toFixed(2)}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -869,6 +916,44 @@ export default function WelcomeScreen() {
             </TouchableOpacity>
           </Animated.View>
         </TouchableOpacity>
+      )}
+
+      {insightsVisible && (
+        <Animated.View
+          style={[
+            styles.insightsContainer,
+            {
+              opacity: insightsAnimation,
+              transform: [{
+                translateY: insightsAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0]
+                })
+              }]
+            }
+          ]}
+        >
+          <View style={styles.insightsHeader}>
+            <Text style={styles.insightsTitle}>Recomendaciones</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={toggleInsights}
+            >
+              <MaterialIcons name="close" size={24} color="#666666" />
+            </TouchableOpacity>
+          </View>
+          {getSpendingInsights().map((insight, index) => (
+            <View key={index} style={styles.insightCard}>
+              <View style={[styles.insightIcon, { backgroundColor: insight.color + '20' }]}>
+                <MaterialIcons name={insight.icon} size={24} color={insight.color} />
+              </View>
+              <View style={styles.insightContent}>
+                <Text style={styles.insightTitle}>{insight.titulo}</Text>
+                <Text style={styles.insightMessage}>{insight.mensaje}</Text>
+              </View>
+            </View>
+          ))}
+        </Animated.View>
       )}
 
       <ScrollView style={styles.content}>
@@ -1041,25 +1126,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  saldoContainer: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
     borderRadius: 16,
-    elevation: 3,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 16,
+  },
+  insightsButton: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(107, 82, 174, 0.1)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  saldoContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  saldoLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(107, 82, 174, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  saldoIcon: {
+    marginRight: 4,
+  },
   saldoLabel: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#424242',
-    marginRight: 12,
+    fontSize: 14,
+    color: '#6B52AE',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   saldoMonto: {
     fontSize: 24,
@@ -1074,16 +1190,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   graficoSeccion: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 24,
-    elevation: 2,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tituloGrafico: {
     fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    paddingHorizontal: 8,
   },
   graficoContent: {
     minHeight: 150,
@@ -1456,16 +1577,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  insightsContainer: {
+    position: 'absolute',
+    top: 220,
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 16,
-    backgroundColor: '#FFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    zIndex: 1000,
+  },
+  insightsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 1000,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  headerLeft: {
+  insightsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#424242',
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: '#F8F9FA',
+    padding: 12,
+    borderRadius: 12,
+  },
+  insightIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  insightContent: {
     flex: 1,
+  },
+  insightTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#424242',
+    marginBottom: 4,
+  },
+  insightMessage: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 20,
   },
   emptyContainer: {
     flex: 1,
@@ -1575,37 +1749,51 @@ const styles = StyleSheet.create({
   },
   barraContainer: {
     flexDirection: 'row',
-    justifyContent: 'center', // Centrar las barras
     alignItems: 'flex-end',
-    minHeight: 200,
-    paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 24,
-    gap: 24, // Espacio fijo entre barras
+    justifyContent: 'space-around',
+    height: 180,
+    paddingBottom: 45,
+    paddingTop: 30,
+    paddingHorizontal: 10,
+    marginTop: 20,
   },
   barraWrapper: {
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    height: 150,
-  },
-  barra: {
-    borderRadius: 20, // Bordes más redondeados
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    marginHorizontal: 8,
+    minWidth: 120,
+    position: 'relative',
   },
   barraPorcentaje: {
     fontSize: 12,
     color: '#666',
     marginBottom: 4,
+    position: 'absolute',
+    top: -20,
+    backgroundColor: '#fff',
+    paddingHorizontal: 4,
+    borderRadius: 4,
+    zIndex: 1,
+    left: '50%',
+    transform: [{ translateX: -20 }],
+  },
+  barraContent: {
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
+    width: '100%',
+  },
+  barra: {
+    borderRadius: 4,
+    width: 28,
   },
   barraLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
     marginTop: 8,
     textAlign: 'center',
-    maxWidth: 60,
+    width: 120,
+    position: 'absolute',
+    bottom: -30,
+    left: 0,
   },
 });

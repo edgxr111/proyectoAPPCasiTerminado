@@ -191,14 +191,16 @@ const styles = StyleSheet.create({
   },
   legendItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 10,
+    paddingHorizontal: 10,
   },
   legendColor: {
     width: 12,
     height: 12,
     borderRadius: 6,
     marginRight: 8,
+    marginTop: 4,
   },
   legendText: {
     flex: 1,
@@ -206,11 +208,11 @@ const styles = StyleSheet.create({
   legendCategory: {
     fontSize: 14,
     color: '#333',
+    marginBottom: 2,
   },
   legendAmount: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2,
   },
   emptyText: {
     textAlign: 'center',
